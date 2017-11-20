@@ -9,12 +9,14 @@ using Microsoft.Office.Core;
 using System.Globalization;
 using System.Threading;
 using System.Windows;
+using Microsoft.Win32;
 
 namespace DixelGraphics
 {
     internal class ExcelFile
     {
         private readonly String SaveDir = "";
+        private readonly String SaveFileName = "";
         Application xlApp = new Application();
         Workbooks xlWBooks = null;
         Workbook xlWBook = null;
@@ -30,16 +32,19 @@ namespace DixelGraphics
                 xlApp.Interactive = false;
                 xlApp.FileValidation = MsoFileValidationMode.msoFileValidationSkip;
                 SaveDir = Path.GetDirectoryName(filePath);
+                SaveFileName = Path.GetFileName(filePath);
                 InitializeExcelObjs(filePath);
             }
             catch(COMException ex)
             {
                 MessageBox.Show(ex.Message, "Excel Error!");
                 Dispose();
+                throw ex;
             }
             catch(Exception e)
             {
                 Dispose();
+                throw e;
                 //TODO... 
             }
         }
@@ -140,6 +145,10 @@ namespace DixelGraphics
                         {
                             
                         }
+                        catch (Exception)
+                        {
+                            Dispose(sheet);
+                        }
                     });
                     chartThreads.Add(t);
                     sheetNumber++;                    
@@ -166,16 +175,28 @@ namespace DixelGraphics
 
         private void ConvertDateTimeToString(Worksheet sheet, int sheetNumber, int sheetCount)
         {
+            CultureInfo cInfo = new CultureInfo("bg-BG");
+            cInfo.DateTimeFormat.ShortDatePattern = "dd/MM/yyyy";
+            cInfo.DateTimeFormat.ShortTimePattern = "hh:mm:ss";
+            cInfo.DateTimeFormat.DateSeparator = "/";
+
             SetLabelNote(sheetNumber, sheetCount);
             Range range = sheet.UsedRange;
             object[,] usedRange = range.Value;
             int rowCount = range.Rows.Count;
-            for (int i = 1; i <= rowCount; ++i)
+            try
             {
-                UpdateProgBarConvert(i, rowCount);
-                string currentCell = FixDateTimeFormat(usedRange[i, 1]);
-                if (DateTime.TryParse(currentCell, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime d))
-                    usedRange[i, 1] = "\'" + currentCell;
+                for (int i = 1; i <= rowCount; ++i)
+                {
+                    UpdateProgBarConvert(i, rowCount);
+                    string currentCell = FixDateTimeFormat(usedRange[i, 1]);
+                    if (DateTime.TryParse(currentCell, cInfo, DateTimeStyles.None, out DateTime d))
+                        usedRange[i, 1] = "\'" + currentCell;
+                }
+            }
+            catch (Exception)
+            {
+                return;
             }
             range.Value = usedRange;
         }
@@ -188,20 +209,25 @@ namespace DixelGraphics
             }
             if (date.ToString().IndexOf('.') > 10)
             {
-                date = date.ToString().Replace('.', ':');
-            }
-            else
-            {
-                string smalldate = date.ToString().Substring(0, 10);
-                string fixedSmallDate = "";
-                if (smalldate.Contains("."))
+                string separatedHour = date.ToString().Substring(11);
+                if (separatedHour.Contains("."))
                 {
-                    fixedSmallDate = smalldate.Replace('.', '/');
-                    date = date.ToString().Replace(smalldate, fixedSmallDate);
-                    FixDateTimeFormat(date);
+                    string fixedHours = separatedHour.Replace('.', ':');
+                    date = date.ToString().Replace(separatedHour, fixedHours);
                 }
-                
             }
+            //else
+            //{
+            //    string smalldate = date.ToString().Substring(0, 10);
+            //    string fixedSmallDate = "";
+            //    if (smalldate.Contains("."))
+            //    {
+            //        fixedSmallDate = smalldate.Replace('.', '/');
+            //        date = date.ToString().Replace(smalldate, fixedSmallDate);
+            //        FixDateTimeFormat(date);
+            //    }
+                
+            //}
             
             return date.ToString();
         }
@@ -249,7 +275,8 @@ namespace DixelGraphics
             {
                 window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum = max);
             }
-            window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value = val);
+            if(window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value < val))
+                window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value = val);
             window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"{val}/{max}");
         }
 
@@ -260,12 +287,40 @@ namespace DixelGraphics
             window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"{val}/{window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum)}");
         }
 
-        private void CreateHumidityGraphs(Worksheet sheet) => throw new NotImplementedException();
+        private void CreateHumidityGraphs(Worksheet sheet)
+        {
+            if (CancelRequest())
+                return;
+
+            int totalRows = sheet.UsedRange.Rows.Count;
+            UpdateProgBarChart(0, totalRows);
+            ExcelChart xlChart;
+            try
+            {
+                xlChart = new ExcelChart(sheet, false);
+                xlChart.SetChartRange();
+            }
+            catch (Exception)
+            {
+                Dispose(sheet);
+            }
+        }
         private void CreateTemperatureGraphs(Worksheet sheet)
         {
             if (CancelRequest())
-            {
                 return;
+
+            int totalRows = sheet.UsedRange.Rows.Count;
+            UpdateProgBarChart(0, totalRows);
+            ExcelChart xlChart;
+            try
+            {
+                xlChart = new ExcelChart(sheet);
+                xlChart.SetChartRange();
+            }
+            catch (Exception)
+            {
+                Dispose(sheet);
             }
 
         }
@@ -288,12 +343,79 @@ namespace DixelGraphics
 
         internal void PrintGraphics()
         {
-
+            try
+            {
+                Sheets sheets = xlWBook.Worksheets;
+                foreach (Worksheet sheet in sheets)
+                {
+                    ChartObjects charts = sheet.ChartObjects();
+                    if(charts != null)
+                    {
+                        foreach(ChartObject chartObj in charts)
+                        {
+                            Chart chart = chartObj.Chart;
+                            if(chart != null)
+                            {
+                                chart.PrintOut();
+                                Thread.Sleep(1);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                Dispose();
+            }
         }
 
         internal void SaveAs()
         {
+            try
+            {
+                SaveFileDialog saveFile = new SaveFileDialog();
+                saveFile.Filter = "Excel Workbook|*.xlsx|Excel 97-2003 Workbook|*.xls";
+                switch (Path.GetExtension(SaveFileName))
+                {
+                    case ".xls":
+                        saveFile.DefaultExt = "xls";
+                        break;
+                    case ".xlsx":
+                        saveFile.DefaultExt = "xlsx";
+                        break;
+                    default:
+                        break;
+                }
+                saveFile.AddExtension = true;
+                if (saveFile.ShowDialog() ?? false)
+                {
+                    xlWBook.SaveAs(saveFile.FileName,
+                                    Type.Missing,
+                                    Type.Missing,
+                                    Type.Missing,
+                                    false,
+                                    false,
+                                    XlSaveAsAccessMode.xlExclusive,
+                                    false,
+                                    false,
+                                    Type.Missing,
+                                    Type.Missing,
+                                    Type.Missing);
+                    while (!xlWBook.Saved) { }
 
+                    MessageBox.Show("File saved successfully in \"" + saveFile.FileName + "\"");
+                    xlWBook.Close(false);
+                    xlWBooks.Close();
+                    Dispose();
+                }
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("There was a problem saving the file!");
+                xlWBook.Close(false);
+                xlWBooks.Close();
+                Dispose();
+            }
         }
     }
 }

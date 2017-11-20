@@ -78,18 +78,28 @@ namespace DixelGraphics
             StartWorking();
         }
 
-        /// <summary>
-        /// Here starts the whole process of working on the file!
-        /// </summary>
-        private void StartWorking()
+        private bool ValidateCheckBoxes()
         {
             if ((!graphicsCheckBox.IsChecked ?? false) && (!printChckBox.IsChecked ?? false) && (!alterChckBox.IsChecked ?? false))
             {
                 MessageBox.Show(
                         "Не сте избрали опция за промяна на стойности, създаване или принтиране на графики!",
                         "Внимание!", MessageBoxButton.OK);
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Here starts the whole process of working on the file!
+        /// </summary>
+        private void StartWorking()
+        {
+            if (!ValidateCheckBoxes())
+            {
                 return;
             }
+
             ExcelFile excelFile = null;
             try
             {
@@ -123,6 +133,27 @@ namespace DixelGraphics
                 //TODO...
             }
         }
+
+        private void btnCancel_Click(object sender, RoutedEventArgs e)
+        {
+            _cancel = true;
+        }
+
+        private void humidChckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            if(humidColumnCorrectionCheckBox != null)
+                humidColumnCorrectionCheckBox.IsEnabled = true;
+        }
+
+        private void humidChckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (humidColumnCorrectionCheckBox != null)
+            {
+                humidColumnCorrectionCheckBox.IsChecked = false;
+                humidColumnCorrectionCheckBox.IsEnabled = false;
+            }
+        }
+
         private void graphicsCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             tempChckBox.IsEnabled = true;
@@ -134,14 +165,9 @@ namespace DixelGraphics
         private void graphicsCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
             tempChckBox.IsChecked = false;
-            humidChckBox.IsChecked = false;
             tempChckBox.IsEnabled = false;
+            humidChckBox.IsChecked = false;
             humidChckBox.IsEnabled = false;
-        }
-
-        private void btnCancel_Click(object sender, RoutedEventArgs e)
-        {
-            _cancel = true;
         }
     }
 }

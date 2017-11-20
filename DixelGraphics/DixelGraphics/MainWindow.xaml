@@ -15,11 +15,11 @@
             </StackPanel>
         </Button>
         <CheckBox x:Name="graphicsCheckBox" Content="Създаване на графики" HorizontalAlignment="Left" Margin="10,71,0,0" VerticalAlignment="Top" Checked="graphicsCheckBox_Checked" Unchecked="graphicsCheckBox_Unchecked"/>
-        <CheckBox x:Name="tempChckBox" Content="Температура" HorizontalAlignment="Left" Margin="26,91,0,0" VerticalAlignment="Top"/>
-        <CheckBox x:Name="printChckBox" Content="Принтиране на графиките" HorizontalAlignment="Left" Margin="10,135,0,0" VerticalAlignment="Top"/>
-        <CheckBox x:Name="alterChckBox" Content="Промяна на стойности" HorizontalAlignment="Left" Margin="10,155,0,0" VerticalAlignment="Top"/>
-        <CheckBox x:Name="humidChckBox" Content="Влажност" HorizontalAlignment="Left" Margin="26,111,0,0" VerticalAlignment="Top"/>
-        <CheckBox Content="CheckBox" HorizontalAlignment="Left" Margin="202,71,0,0" VerticalAlignment="Top"/>
+        <CheckBox x:Name="tempChckBox" Content="Температура" HorizontalAlignment="Left" Margin="26,91,0,0" VerticalAlignment="Top" IsEnabled="False"/>
+        <CheckBox x:Name="printChckBox" Content="Принтиране на графиките" HorizontalAlignment="Left" Margin="10,153,0,0" VerticalAlignment="Top"/>
+        <CheckBox x:Name="alterChckBox" Content="Промяна на стойности" HorizontalAlignment="Left" Margin="10,173,0,0" VerticalAlignment="Top"/>
+        <CheckBox x:Name="humidChckBox" Content="Влажност" HorizontalAlignment="Left" Margin="26,111,0,0" VerticalAlignment="Top" IsEnabled="False" Checked="humidChckBox_Checked" Unchecked="humidChckBox_Unchecked"/>
+        <CheckBox x:Name="humidColumnCorrectionCheckBox" Content="Влажността е в 3тата колона" HorizontalAlignment="Left" Margin="41,131,0,0" VerticalAlignment="Top" Width="271" Height="15" IsEnabled="False"/>
         <Grid Height="24" VerticalAlignment="Bottom" ScrollViewer.VerticalScrollBarVisibility="Disabled">
             <ProgressBar x:Name="progBarChart" x:FieldModifier="public" Panel.ZIndex="1"/>
             <TextBlock x:Name="progBarChartText" HorizontalAlignment="Center" x:FieldModifier="public" Background="Transparent" FontWeight="Bold" Panel.ZIndex="2"/>
