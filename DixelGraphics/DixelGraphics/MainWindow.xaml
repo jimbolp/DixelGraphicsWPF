@@ -1,11 +1,11 @@
-﻿<Window x:Class="DixelGraphics.MainWindow"
+﻿<Window x:Name="___No_Name_" x:Class="DixelGraphics.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:DixelGraphics"
         mc:Ignorable="d"
-        Title="MainWindow" Height="325.942" Width="458.259">
+        Title="Създаване на графики" Height="325.942" Width="458.259">
     <Grid>
 
         <TextBox x:Name="filePathTextBox" HorizontalAlignment="Left" Height="23" Margin="10,30,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="273" DragOver="filePathTextBox_DragOver" Drop="filePathTextBox_Drop" AllowDrop="True" PreviewDragOver="filePathTextBox_PreviewDragOver"/>
@@ -19,17 +19,17 @@
         <CheckBox x:Name="printChckBox" Content="Принтиране на графиките" HorizontalAlignment="Left" Margin="10,153,0,0" VerticalAlignment="Top"/>
         <CheckBox x:Name="alterChckBox" Content="Промяна на стойности" HorizontalAlignment="Left" Margin="10,173,0,0" VerticalAlignment="Top"/>
         <CheckBox x:Name="humidChckBox" Content="Влажност" HorizontalAlignment="Left" Margin="26,111,0,0" VerticalAlignment="Top" IsEnabled="False" Checked="humidChckBox_Checked" Unchecked="humidChckBox_Unchecked"/>
-        <CheckBox x:Name="humidColumnCorrectionCheckBox" Content="Влажността е в 3тата колона" HorizontalAlignment="Left" Margin="41,131,0,0" VerticalAlignment="Top" Width="271" Height="15" IsEnabled="False"/>
+        <CheckBox x:Name="humidColumnCorrectionCheckBox" Content="Влажността е в трета колона" HorizontalAlignment="Left" Margin="41,131,0,0" VerticalAlignment="Top" Width="271" Height="15" IsEnabled="False"/>
         <Grid Height="24" VerticalAlignment="Bottom" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-            <ProgressBar x:Name="progBarChart" x:FieldModifier="public" Panel.ZIndex="1"/>
-            <TextBlock x:Name="progBarChartText" HorizontalAlignment="Center" x:FieldModifier="public" Background="Transparent" FontWeight="Bold" Panel.ZIndex="2"/>
+            <ProgressBar x:Name="progBarChart" x:FieldModifier="public" Panel.ZIndex="1" Grid.IsSharedSizeScope="True" VerticalContentAlignment="Center"/>
+            <TextBlock x:Name="progBarChartText" HorizontalAlignment="Center" x:FieldModifier="public" Background="Transparent" FontWeight="Bold" Panel.ZIndex="2" Foreground="#FF494949" VerticalAlignment="Center" Grid.IsSharedSizeScope="True"/>
         </Grid>
         <Grid Height="24" VerticalAlignment="Bottom" ScrollViewer.VerticalScrollBarVisibility="Disabled" Margin="0,0,0,29">
-            <ProgressBar x:Name="progBarConvert" x:FieldModifier="public" Panel.ZIndex="1"/>
-            <TextBlock x:Name="progBarConvertText" HorizontalAlignment="Center" x:FieldModifier="public" Background="Transparent" FontWeight="Bold" Panel.ZIndex="2"/>
+            <ProgressBar x:Name="progBarConvert" x:FieldModifier="public" Panel.ZIndex="1" Grid.IsSharedSizeScope="True" VerticalContentAlignment="Center"/>
+            <TextBlock x:Name="progBarConvertText" HorizontalAlignment="Center" x:FieldModifier="public" Background="Transparent" FontWeight="Bold" Panel.ZIndex="2" Foreground="#FF494949" VerticalAlignment="Center" Grid.IsSharedSizeScope="True"/>
         </Grid>
         <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Left" Margin="328,120,0,0" VerticalAlignment="Top" Width="75" Click="btnCancel_Click" IsCancel="True"/>
-        <Label x:Name="labelNotification" x:FieldModifier="public" Content="" HorizontalAlignment="Left" Margin="10,0,0,58" Height="26" VerticalAlignment="Bottom"/>
+        <Label x:Name="labelNotification" x:FieldModifier="public" Content="" HorizontalAlignment="Left" Margin="10,0,0,58" Height="26" VerticalAlignment="Bottom" FontWeight="Bold" FontSize="10"/>
 
     </Grid>
 </Window>

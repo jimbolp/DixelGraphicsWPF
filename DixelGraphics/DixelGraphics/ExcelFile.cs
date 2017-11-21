@@ -15,6 +15,13 @@ namespace DixelGraphics
 {
     internal class ExcelFile
     {
+        const double COLD_MIN = 2.5;
+        const double COLD_MAX = 7.5;
+        const double TEMP_MIN = 16.0;
+        const double TEMP_MAX = 24.0;
+        const double HUMID_MIN = 35.0;
+        const double HUMID_MAX = 55.0;
+
         private readonly String SaveDir = "";
         private readonly String SaveFileName = "";
         Application xlApp = new Application();
@@ -151,7 +158,8 @@ namespace DixelGraphics
                         }
                     });
                     chartThreads.Add(t);
-                    sheetNumber++;                    
+                    sheetNumber++;
+                    Thread.Sleep(1);
                 }
                 foreach(Thread t in chartThreads)
                 {
@@ -261,17 +269,17 @@ namespace DixelGraphics
                 window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum = max);
             }
             window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Value = val);
-            window.progBarConvertText.Dispatcher.Invoke(() => window.progBarConvertText.Text = $"{val}/{max}");
+            window.progBarConvertText.Dispatcher.Invoke(() => window.progBarConvertText.Text = $"Проверка на датите: {(int)(((decimal)val / max) * 100)}%");
         }
 
         private void UpdateProgBarConvert(int val)
         {
             MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
             window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Value = val);
-            window.progBarConvertText.Dispatcher.Invoke(() => window.progBarConvertText.Text = $"{val}/{window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum)}");
+            window.progBarConvertText.Dispatcher.Invoke(() => window.progBarConvertText.Text = $"Проверка на датите: {(int)((val / (decimal)window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum) * 100))}%");
         }
 
-        private void UpdateProgBarChart(int val, int max)
+        private void UpdateProgBarChart(int val, int max, bool print = false)
         {
             MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
             if (window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum < max))
@@ -280,14 +288,28 @@ namespace DixelGraphics
             }
             if(window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value < val))
                 window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value = val);
-            window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"{val}/{max}");
+            if (print)
+            {
+                window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"Принтиране на графики: {(int)(((decimal)val / max) * 100)}%");
+            }
+            else
+            {
+                window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"Създаване на графики: {(int)(((decimal)val / max) * 100)}%");
+            }
         }
 
-        private void UpdateProgBarChart(int val)
+        private void UpdateProgBarChart(int val, bool print = false)
         {
             MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
             window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value = val);
-            window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"{val}/{window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum)}");
+            if (print)
+            {
+                window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"Принтиране на графики: {(int)((val / (decimal)window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum) * 100))}%");
+            }
+            else
+            {
+                window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"Създаване на графики: {(int)((val / (decimal)window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum) * 100))}%");
+            }
         }
 
         private void CreateHumidityGraphs(Worksheet sheet)
@@ -302,6 +324,8 @@ namespace DixelGraphics
             {
                 xlChart = new ExcelChart(sheet, false);
                 xlChart.SetChartRange();
+                ResetProgBarChart(totalRows);
+                Thread.Sleep(1);
             }
             catch (Exception)
             {
@@ -320,6 +344,8 @@ namespace DixelGraphics
             {
                 xlChart = new ExcelChart(sheet);
                 xlChart.SetChartRange();
+                ResetProgBarChart(totalRows);
+                Thread.Sleep(1);
             }
             catch (Exception)
             {
@@ -341,26 +367,104 @@ namespace DixelGraphics
 
         internal void AlterValues()
         {
-            
+            try
+            {
+                Sheets sheets = xlWBook.Sheets;
+                List<Thread> sheetToAlter = new List<Thread>();
+                foreach(Worksheet sheet in sheets)
+                {
+                    Thread t = new Thread(() => ConvertValues(sheet));
+                    sheetToAlter.Add(t);
+                }
+                foreach(Thread t in sheetToAlter)
+                {
+                    t.Start();
+                    t.Join();
+                }
+            }
+            catch (Exception)
+            {
+                //TODO...
+            }
         }
 
+        private void ConvertValues(Worksheet sheet)
+        {
+            if (sheet.UsedRange.Columns.Count == 2)
+            {
+                TempOrHumidConvert(sheet.UsedRange.Columns[2]);               
+            }
+            else if(sheet.UsedRange.Columns.Count == 3)
+            {
+                TempOrHumidConvert(sheet.UsedRange.Columns[2]);
+                TempOrHumidConvert(sheet.UsedRange.Columns[3]);
+            }
+            else
+            {
+                MessageBox.Show("Програмата не може да прецени в коя колона са стойностите. Няма направени промени.");
+                return;
+            }
+            
+        }
+        private void TempOrHumidConvert(Range cells)
+        {
+            object[,] values = cells.Value;
+            double count = 0.0;
+            for (int i = 1; i <= (10 < values.Length ? 10 : values.Length); ++i)
+            {
+                object value = values[i,1];
+                if (Double.TryParse(value.ToString(), out Double val))
+                {
+                    count += val;
+                }
+            }
+            double average = count / (10 < values.Length ? 10 : values.Length);
+            if (average < COLD_MAX && average > COLD_MIN)
+            {
+                for (int i = 1; i <= values.Length; ++i)
+                {
+                    if (Double.TryParse(values[i, 1].ToString(), out Double d))
+                    {
+                        if (d > COLD_MAX)
+                        {
+                            values[i, 1] = (int)d - ((int)d - (int)COLD_MAX) + ((double)d - (int)d);
+                        }
+                        else if (d < COLD_MIN)
+                        {
+                            values[i, 1] = (int)d + ((int)COLD_MIN - (int)d) + ((double)d - (int)d);
+                        }
+                    }
+                }
+            }
+            cells.Value = values;
+        }
+
+        /// <summary>
+        /// Print all Charts in the Workbook
+        /// </summary>
         internal void PrintGraphics()
         {
             try
             {
                 Sheets sheets = xlWBook.Worksheets;
+                int sheetCount = 1;
                 foreach (Worksheet sheet in sheets)
                 {
+                    if(!(sheet.UsedRange.Rows.Count <= 1))
+                        SetLabelNote(sheetCount++, sheets.Count);
                     ChartObjects charts = sheet.ChartObjects();
+                    ResetProgBarChart(charts.Count);
                     if(charts != null)
                     {
+                        int chartCount = 1;
                         foreach(ChartObject chartObj in charts)
                         {
+                            UpdateProgBarChart(chartCount++, charts.Count, true);
                             Chart chart = chartObj.Chart;
                             if(chart != null)
                             {
-                                chart.PrintOut();
-                                Thread.Sleep(1);
+                                //chart.PrintOut();
+                                Thread.Sleep(10);
                             }
                         }
                     }

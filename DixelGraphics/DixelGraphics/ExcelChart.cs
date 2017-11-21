@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using Microsoft.Office.Interop.Excel;
 
@@ -52,12 +54,17 @@ namespace DixelGraphics
 
         public void SetChartRange()
         {
-            int startPositionLeft = 100;
-            int startPositionTop = 100;
+            double startPositionLeft = 100;
+            double startPositionTop = 100;
             bool startRange = true;
             int totalRows = usedRange.Rows.Count;
             object[,] range = usedRange.Value;
             string currentValue;
+            CultureInfo cInfo = new CultureInfo("bg-BG");
+            cInfo.DateTimeFormat.ShortDatePattern = "dd/MM/yyyy";
+            cInfo.DateTimeFormat.ShortTimePattern = "hh:mm:ss";
+            cInfo.DateTimeFormat.DateSeparator = "/";
+
             for (int i = 1; i <= totalRows; ++i)
             {
                 if (CancelRequest())
@@ -75,9 +82,10 @@ namespace DixelGraphics
                 currentValue = Convert.ToString(range[i, 1]).Trim();
                 if (currentValue.Contains("\'"))
                     currentValue = currentValue.Remove(currentValue.IndexOf('\''), 1);
-                if (DateTime.TryParse(currentValue, out DateTime date))
+                DateTime date;
+                if (DateTime.TryParse(currentValue, out date) || DateTime.TryParse(currentValue, cInfo, DateTimeStyles.None, out date))
                 {
-                    if (date.DayOfWeek == DayOfWeek.Monday)
+                    if ((temperature && date.DayOfWeek == DayOfWeek.Monday) || (!temperature && IsFirstDayOfMonth(currentValue, cInfo)))
                     {
                         if (startRange && i != totalRows)
                         {
@@ -86,7 +94,7 @@ namespace DixelGraphics
                         else
                         {
                             CreateChart(startPositionLeft, startPositionTop);
-                            startPositionTop += 600;
+                            startPositionTop += chartHeigth;
                             StartNewRange(i);
                             startRange = true;
                         }
@@ -99,16 +107,16 @@ namespace DixelGraphics
                         if(i == totalRows)
                         {
                             CreateChart(startPositionLeft, startPositionTop);
-                            startPositionTop += 600;
+                            startPositionTop += chartHeigth;
                             //StartNewRange(i);
                         }
                         else
                         {
                             string nextCell = Convert.ToString(range[i + 1, 1]);
-                            if (DateTime.TryParse(nextCell, out DateTime d) && d.DayOfWeek == DayOfWeek.Monday)
+                            if ((temperature && DateTime.TryParse(nextCell, out DateTime d) && d.DayOfWeek == DayOfWeek.Monday) || (!temperature && IsFirstDayOfMonth(currentValue, cInfo)))
                             {
                                 CreateChart(startPositionLeft, startPositionTop);
-                                startPositionTop += 600;
+                                startPositionTop += chartHeigth;
                                 StartNewRange(i + 1);
                                 startRange = true;
                             }
@@ -120,7 +128,7 @@ namespace DixelGraphics
                     if (EnoughDataForChart())
                     {
                         CreateChart(startPositionLeft, startPositionTop);
-                        startPositionTop += 600;
+                        startPositionTop += chartHeigth;
                         startRange = true;
                     }
                     StartNewRange(i + 1);
@@ -128,11 +136,23 @@ namespace DixelGraphics
             }
         }
 
-        private void CreateChart(int startPositionLeft, int startPositionTop)
+        private bool IsFirstDayOfMonth(string currentValue, CultureInfo cInfo)
+        {
+            DateTime d;
+            if (DateTime.TryParse(currentValue, cInfo, DateTimeStyles.None, out d) && d.Day == 1)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private void CreateChart(double startPositionLeft, double startPositionTop)
         {
             try
             {
                 ChartObjects charts = sheet.ChartObjects();
+
+                //In case we create both temperature and humdity graphs in one sheet we need to separate them. Otherwise they will be on top of eachother
                 if (!temperature)
                 {
                     startPositionLeft += 100;
@@ -182,7 +202,7 @@ namespace DixelGraphics
             }
             if (window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value < val))
                 window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value = val);
-            window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"{val}/{max}");
+            window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"Създаване на графики: {(int)((val / max) * 100)}%");
         }
 
         private void UpdateProgBarChart(int val)
@@ -190,7 +210,7 @@ namespace DixelGraphics
             MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
             if(window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value < val))
                 window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Value = val);
-            window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"{val}/{window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum)}");
+            window.progBarChartText.Dispatcher.Invoke(() => window.progBarChartText.Text = $"Създаване на графики: {(int)((val / window.progBarChart.Dispatcher.Invoke(() => window.progBarChart.Maximum) * 100))} %");
         }
 
         private bool EnoughDataForChart()
