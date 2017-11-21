@@ -65,7 +65,11 @@ namespace DixelGraphics
                     return;
                 }
                 if (range[i, 1] == null)
+                {
+                    if(i == totalRows)
+                        CreateChart(startPositionLeft, startPositionTop);
                     continue;
+                }
                 UpdateProgBarChart(i);
 
                 currentValue = Convert.ToString(range[i, 1]).Trim();

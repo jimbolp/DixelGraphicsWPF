@@ -184,19 +184,22 @@ namespace DixelGraphics
             Range range = sheet.UsedRange;
             object[,] usedRange = range.Value;
             int rowCount = range.Rows.Count;
-            try
+            for (int i = 1; i <= rowCount; ++i)
             {
-                for (int i = 1; i <= rowCount; ++i)
+                try
                 {
                     UpdateProgBarConvert(i, rowCount);
                     string currentCell = FixDateTimeFormat(usedRange[i, 1]);
                     if (DateTime.TryParse(currentCell, cInfo, DateTimeStyles.None, out DateTime d))
-                        usedRange[i, 1] = "\'" + currentCell;
+                    {
+                        if (usedRange[i, 1] != null)
+                            usedRange[i, 1] = "\'" + currentCell;
+                    }
                 }
-            }
-            catch (Exception)
-            {
-                return;
+                catch (Exception)
+                {
+                    continue;
+                }
             }
             range.Value = usedRange;
         }
@@ -387,8 +390,16 @@ namespace DixelGraphics
                         break;
                 }
                 saveFile.AddExtension = true;
-                if (saveFile.ShowDialog() ?? false)
+                saveFile.FileName = SaveFileName;
+                saveFile.OverwritePrompt = false;
+                bool fileSaved = false;
+                while (saveFile.ShowDialog() ?? false)
                 {
+                    if (File.Exists(saveFile.FileName))
+                    {
+                        MessageBox.Show("Файлът вече съществува. Моля изберете друго име!");
+                        continue;
+                    }
                     xlWBook.SaveAs(saveFile.FileName,
                                     Type.Missing,
                                     Type.Missing,
@@ -404,9 +415,23 @@ namespace DixelGraphics
                     while (!xlWBook.Saved) { }
 
                     MessageBox.Show("File saved successfully in \"" + saveFile.FileName + "\"");
+                    fileSaved = true;
                     xlWBook.Close(false);
                     xlWBooks.Close();
                     Dispose();
+
+                    break;
+                }
+                if (!fileSaved)
+                {
+                    MessageBox.Show("Файлът не беше запазен!");
+                }
+            }
+            catch (COMException comEx)
+            {
+                if(comEx.Message.Contains("Cannot save as that name."))
+                {
+                    MessageBox.Show("Файлът е отворен за четене. Нямате права да го променяте. Моля изберете друго име!");
                 }
             }
             catch (Exception)
