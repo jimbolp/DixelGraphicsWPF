@@ -9,21 +9,24 @@ namespace DixelGraphics
 {
     internal class ExcelChart
     {
+        const double COLD_LIMIT = 10.0;
+        const double TEMP_LIMIT = 30.0;
+
         const double chartHeigth = 521.0134; //18.23cm * 28.58
         const double chartWidth = 867.9746;  //30.37cm * 28.58
-        private readonly bool temperature = true;
+        private bool temperature = true;
         string topDateCell, topValueCell, bottomDateCell, bottomValueCell;
-        private readonly char humidValueColumn = 'B';
+        private char currentValueColumn = 'B';
         Worksheet sheet;
         Range usedRange;
         public int ChartNumber { get; set; } = 1;
 
         public ExcelChart(Worksheet sheet, bool isTemperature = true)
         {
-            temperature = isTemperature;
+            //temperature = isTemperature;
             this.sheet = sheet;
             usedRange = sheet.UsedRange;
-            if (!temperature)
+            /*if (!temperature)
             {
                 MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
                 if(window.humidColumnCorrectionCheckBox.Dispatcher.Invoke(() => window.humidColumnCorrectionCheckBox.IsChecked ?? false))
@@ -37,25 +40,51 @@ namespace DixelGraphics
                 }
             }
             bottomDateCell = topDateCell = "A1";
-            bottomValueCell = topValueCell = humidValueColumn.ToString() + 1;
+            bottomValueCell = topValueCell = humidValueColumn.ToString() + 1;//*/
         }
 
         public void ExpandRange(int row)
         {
             bottomDateCell = "A" + row;
-            bottomValueCell = humidValueColumn.ToString() + row;
+            bottomValueCell = currentValueColumn.ToString() + row;
         }
 
         public void StartNewRange(int row)
         {
             bottomDateCell = topDateCell = "A" + row;
-            bottomValueCell = topValueCell = humidValueColumn.ToString() + row;
+            bottomValueCell = topValueCell = currentValueColumn.ToString() + row;
         }
 
         public void SetChartRange()
         {
+            //tests...
+            int valueColumnsCount = sheet.UsedRange.Columns.Count;
+            char valueColumn = (char)64;
+            
+            for (int i = 2; i <= valueColumnsCount; ++i)
+            {
+                //Char 'B' == 66 (ASCII Code Table)
+                currentValueColumn = (char)(valueColumn + i);
+                topValueCell = bottomValueCell = currentValueColumn.ToString() + 1;
+                GraphFromChartRange(sheet.UsedRange.Columns[i]);
+            }
+
+            //tests end
+            
+        }
+        private void GraphFromChartRange(Range column)
+        {
+            GraphType type = CheckGraphType(column);
+            temperature = type == GraphType.Temperature ? true : false;
             double startPositionLeft = 100;
             double startPositionTop = 100;
+            
+            if(type == GraphType.Humidity)
+            {
+                startPositionLeft += 100;
+                startPositionTop += 50;
+            }
+
             bool startRange = true;
             int totalRows = usedRange.Rows.Count;
             object[,] range = usedRange.Value;
@@ -73,7 +102,7 @@ namespace DixelGraphics
                 }
                 if (range[i, 1] == null)
                 {
-                    if(i == totalRows)
+                    if (i == totalRows)
                         CreateChart(startPositionLeft, startPositionTop);
                     continue;
                 }
@@ -85,7 +114,7 @@ namespace DixelGraphics
                 DateTime date;
                 if (DateTime.TryParse(currentValue, out date) || DateTime.TryParse(currentValue, cInfo, DateTimeStyles.None, out date))
                 {
-                    if ((temperature && date.DayOfWeek == DayOfWeek.Monday) || (!temperature && IsFirstDayOfMonth(currentValue, cInfo)))
+                    if ((type == GraphType.Temperature && date.DayOfWeek == DayOfWeek.Monday) || (type == GraphType.Humidity && IsFirstDayOfMonth(currentValue, cInfo)))
                     {
                         if (startRange && i != totalRows)
                         {
@@ -104,7 +133,7 @@ namespace DixelGraphics
                         ExpandRange(i);
                         startRange = false;
 
-                        if(i == totalRows)
+                        if (i == totalRows)
                         {
                             CreateChart(startPositionLeft, startPositionTop);
                             startPositionTop += chartHeigth;
@@ -113,7 +142,7 @@ namespace DixelGraphics
                         else
                         {
                             string nextCell = Convert.ToString(range[i + 1, 1]);
-                            if ((temperature && DateTime.TryParse(nextCell, out DateTime d) && d.DayOfWeek == DayOfWeek.Monday) || (!temperature && IsFirstDayOfMonth(currentValue, cInfo)))
+                            if ((type == GraphType.Temperature && DateTime.TryParse(nextCell, out DateTime d) && d.DayOfWeek == DayOfWeek.Monday) || (type == GraphType.Humidity && IsFirstDayOfMonth(currentValue, cInfo)))
                             {
                                 CreateChart(startPositionLeft, startPositionTop);
                                 startPositionTop += chartHeigth;
@@ -136,6 +165,31 @@ namespace DixelGraphics
             }
         }
 
+        private GraphType CheckGraphType(Range column)
+        {
+            Range ValueRange = column;
+            object[,] values = ValueRange.Value;
+            double count = 0.0;
+            for (int i = 1; i <= (20 < values.Length ? 20 : values.Length); ++i)
+            {
+                object value = values[i, 1] ?? "";
+                if (Double.TryParse(value.ToString(), out Double val))
+                {
+                    count += val;
+                }
+            }
+            double average = count / (20 < values.Length ? 20 : values.Length);
+
+            if (average <= TEMP_LIMIT)
+            {
+                return GraphType.Temperature;
+            }
+            else
+            {
+                return GraphType.Humidity;
+            }
+        }
+
         private bool IsFirstDayOfMonth(string currentValue, CultureInfo cInfo)
         {
             DateTime d;
@@ -153,11 +207,11 @@ namespace DixelGraphics
                 ChartObjects charts = sheet.ChartObjects();
 
                 //In case we create both temperature and humdity graphs in one sheet we need to separate them. Otherwise they will be on top of eachother
-                if (!temperature)
+                /*if (!temperature)
                 {
                     startPositionLeft += 100;
                     startPositionTop += 50;
-                }
+                }//*/
                 string chartTitle = sheet.Name + (temperature ? "_T" : "_H");
                 Range DateRange = usedRange.Range[topDateCell, bottomDateCell];
                 Range ValueRange = usedRange.Range[topValueCell, bottomValueCell];
@@ -220,6 +274,13 @@ namespace DixelGraphics
                 return false;
             }
             return true;
+        }
+
+        private GraphType GetGraphType()
+        {
+            //TODO...
+
+            return GraphType.Temperature;
         }
     }
 }

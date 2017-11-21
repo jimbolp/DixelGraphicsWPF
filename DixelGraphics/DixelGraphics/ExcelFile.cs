@@ -15,6 +15,10 @@ namespace DixelGraphics
 {
     internal class ExcelFile
     {
+        const double COLD_LIMIT = 10.0;
+        const double TEMP_LIMIT = 30.0;
+        
+
         const double COLD_MIN = 2.5;
         const double COLD_MAX = 7.5;
         const double TEMP_MIN = 16.0;
@@ -27,6 +31,7 @@ namespace DixelGraphics
         Application xlApp = new Application();
         Workbooks xlWBooks = null;
         Workbook xlWBook = null;
+        private readonly int totalCellsToConvert = 0;
 
         public ExcelFile(string filePath, bool? printGraphics)
         {
@@ -41,6 +46,7 @@ namespace DixelGraphics
                 SaveDir = Path.GetDirectoryName(filePath);
                 SaveFileName = Path.GetFileName(filePath);
                 InitializeExcelObjs(filePath);
+                totalCellsToConvert = GetTotalCells();
             }
             catch(COMException ex)
             {
@@ -56,6 +62,18 @@ namespace DixelGraphics
             }
         }
 
+        private int GetTotalCells()
+        {
+            int count = 0;
+            foreach(Worksheet sheet in xlWBook.Sheets)
+            {
+                Range range = sheet.UsedRange;
+                count += range.Rows.Count;
+                Dispose(range);
+            }
+            return count;
+        }
+        
         private void InitializeExcelObjs(string filePath)
         {
             xlWBooks = xlApp.Workbooks;
@@ -127,7 +145,8 @@ namespace DixelGraphics
                 xlWorkSheets = xlWBook.Worksheets;
                 int sheetCount = xlWorkSheets.Count;
                 int sheetNumber = 1;
-                ResetProgBarConvert(sheetCount);
+                ResetProgBarConvert(totalCellsToConvert);
+                //ResetProgBarConvert(sheetCount);
                 foreach(Worksheet sheet in xlWorkSheets)
                 {
                     if (CancelRequest())
@@ -139,14 +158,31 @@ namespace DixelGraphics
                     {
                         try
                         {
-                            if (temperature)
+                            if (CancelRequest())
+                                return;
+
+                            int totalRows = sheet.UsedRange.Rows.Count;
+                            UpdateProgBarChart(0, totalRows);
+                            ExcelChart xlChart;
+                            try
+                            {
+                                xlChart = new ExcelChart(sheet);
+                                xlChart.SetChartRange();
+                                ResetProgBarChart(totalRows);
+                                Thread.Sleep(1);
+                            }
+                            catch (Exception)
+                            {
+                                Dispose(sheet);
+                            }
+                            /*if (temperature)
                             {
                                 CreateTemperatureGraphs(sheet);
                             }
                             if (humidity)
                             {
                                 CreateHumidityGraphs(sheet);
-                            }
+                            }//*/
                         }
                         catch (NotImplementedException)
                         {
@@ -196,7 +232,8 @@ namespace DixelGraphics
             {
                 try
                 {
-                    UpdateProgBarConvert(i, rowCount);
+                    //UpdateProgBarConvert(i, rowCount);
+                    UpdateProgBarConvert();
                     string currentCell = FixDateTimeFormat(usedRange[i, 1]);
                     if (DateTime.TryParse(currentCell, cInfo, DateTimeStyles.None, out DateTime d))
                     {
@@ -261,6 +298,16 @@ namespace DixelGraphics
 
         }
 
+        private void UpdateProgBarConvert()
+        {
+            MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
+            if (window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Value) != window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum))
+            {
+                decimal val = window.progBarConvert.Dispatcher.Invoke(() => (decimal)(++window.progBarConvert.Value));
+                window.progBarConvertText.Dispatcher.Invoke(() => window.progBarConvertText.Text = $"Проверка на датите: {(int)((val / (decimal)window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum) * 100))}%");
+            }
+        }
+
         private void UpdateProgBarConvert(int val, int max)
         {
             MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
@@ -312,6 +359,7 @@ namespace DixelGraphics
             }
         }
 
+        /*
         private void CreateHumidityGraphs(Worksheet sheet)
         {
             if (CancelRequest())
@@ -331,7 +379,8 @@ namespace DixelGraphics
             {
                 Dispose(sheet);
             }
-        }
+        }//*/
+
         private void CreateTemperatureGraphs(Worksheet sheet)
         {
             if (CancelRequest())
@@ -392,51 +441,108 @@ namespace DixelGraphics
         {
             if (sheet.UsedRange.Columns.Count == 2)
             {
-                TempOrHumidConvert(sheet.UsedRange.Columns[2]);               
+                ChangeValuesInRange(sheet.UsedRange.Columns[2]);               
             }
             else if(sheet.UsedRange.Columns.Count == 3)
             {
-                TempOrHumidConvert(sheet.UsedRange.Columns[2]);
-                TempOrHumidConvert(sheet.UsedRange.Columns[3]);
+                ChangeValuesInRange(sheet.UsedRange.Columns[2]);
+                ChangeValuesInRange(sheet.UsedRange.Columns[3]);
             }
             else
             {
                 MessageBox.Show("Програмата не може да прецени в коя колона са стойностите. Няма направени промени.");
                 return;
             }
-            
         }
-        private void TempOrHumidConvert(Range cells)
+        private void ChangeValuesInRange(Range cells)
         {
             object[,] values = cells.Value;
             double count = 0.0;
-            for (int i = 1; i <= (10 < values.Length ? 10 : values.Length); ++i)
+            for (int i = 1; i <= (20 < values.Length ? 20 : values.Length); ++i)
             {
-                object value = values[i,1];
+                object value = values[i,1] ?? "";
                 if (Double.TryParse(value.ToString(), out Double val))
                 {
                     count += val;
                 }
             }
-            double average = count / (10 < values.Length ? 10 : values.Length);
-            if (average < COLD_MAX && average > COLD_MIN)
+            double average = count / (20 < values.Length ? 20 : values.Length);
+            if (average <= COLD_LIMIT)
             {
-                for (int i = 1; i <= values.Length; ++i)
+                values = ColdChainValues(values);
+            }
+            else if(average <= TEMP_LIMIT)
+            {
+                values = TemperatureValues(values);
+            }
+            else
+            {
+                values = HumidityValues(values);
+            }
+            cells.Value = values;
+        }
+
+        private object[,] HumidityValues(object[,] values)
+        {
+            for (int i = 1; i <= values.Length; ++i)
+            {
+                if (values[i, 1] == null)
+                    continue;
+                if (Double.TryParse(values[i, 1].ToString(), out Double d))
                 {
-                    if (Double.TryParse(values[i, 1].ToString(), out Double d))
+                    if (d > HUMID_MAX)
                     {
-                        if (d > COLD_MAX)
-                        {
-                            values[i, 1] = (int)d - ((int)d - (int)COLD_MAX) + ((double)d - (int)d);
-                        }
-                        else if (d < COLD_MIN)
-                        {
-                            values[i, 1] = (int)d + ((int)COLD_MIN - (int)d) + ((double)d - (int)d);
-                        }
+                        values[i, 1] = (int)d - ((int)d - (int)HUMID_MAX) + ((double)d - (int)d);
+                    }
+                    else if (d < HUMID_MIN)
+                    {
+                        values[i, 1] = (int)d + ((int)HUMID_MIN - (int)d) + ((double)d - (int)d);
                     }
                 }
             }
-            cells.Value = values;
+            return values;
+        }
+
+        private object[,] TemperatureValues(object[,] values)
+        {
+            for (int i = 1; i <= values.Length; ++i)
+            {
+                if (values[i, 1] == null)
+                    continue;
+                if (Double.TryParse(values[i, 1].ToString(), out Double d))
+                {
+                    if (d > TEMP_MAX)
+                    {
+                        values[i, 1] = (int)d - ((int)d - (int)TEMP_MAX) + ((double)d - (int)d);
+                    }
+                    else if (d < TEMP_MIN)
+                    {
+                        values[i, 1] = (int)d + ((int)TEMP_MIN - (int)d) + ((double)d - (int)d);
+                    }
+                }
+            }
+            return values;
+        }
+        
+        private object[,] ColdChainValues(object[,] values)
+        {
+            for (int i = 1; i <= values.Length; ++i)
+            {
+                if (values[i, 1] == null)
+                    continue;
+                if (Double.TryParse(values[i, 1].ToString(), out Double d))
+                {
+                    if (d > COLD_MAX)
+                    {
+                        values[i, 1] = (int)d - ((int)d - (int)COLD_MAX) + ((double)d - (int)d);
+                    }
+                    else if (d < COLD_MIN)
+                    {
+                        values[i, 1] = (int)d + ((int)COLD_MIN - (int)d) + ((double)d - (int)d);
+                    }
+                }
+            }
+            return values;
         }
 
         /// <summary>
