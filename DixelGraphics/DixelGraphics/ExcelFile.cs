@@ -10,6 +10,7 @@ using System.Globalization;
 using System.Threading;
 using System.Windows;
 using Microsoft.Win32;
+using System.Windows.Media;
 
 namespace DixelGraphics
 {
@@ -46,7 +47,7 @@ namespace DixelGraphics
                 SaveDir = Path.GetDirectoryName(filePath);
                 SaveFileName = Path.GetFileName(filePath);
                 InitializeExcelObjs(filePath);
-                totalCellsToConvert = GetTotalCells();
+                totalCellsToConvert = GetTotalCells();                
             }
             catch(COMException ex)
             {
@@ -57,8 +58,7 @@ namespace DixelGraphics
             catch(Exception e)
             {
                 Dispose();
-                throw e;
-                //TODO... 
+                throw e; 
             }
         }
 
@@ -136,7 +136,7 @@ namespace DixelGraphics
             }
         }
 
-        internal void CreateGraphics(bool temperature, bool humidity)
+        internal void CreateGraphics(bool temperature = false, bool humidity = false)
         {            
             List<Thread> chartThreads = new List<Thread>();
             Sheets xlWorkSheets = null;
@@ -147,12 +147,15 @@ namespace DixelGraphics
                 int sheetNumber = 1;
                 ResetProgBarConvert(totalCellsToConvert);
                 //ResetProgBarConvert(sheetCount);
-                foreach(Worksheet sheet in xlWorkSheets)
+
+                int totalRows = 0;
+                foreach (Worksheet sheet in xlWorkSheets)
                 {
                     if (CancelRequest())
                         return;
                     if (sheet.UsedRange.Value == null)
                         continue;
+                    totalRows += sheet.UsedRange.Rows.Count;
                     ConvertDateTimeToString(sheet, sheetNumber, sheetCount);
                     Thread t = new Thread(() =>
                     {
@@ -161,14 +164,13 @@ namespace DixelGraphics
                             if (CancelRequest())
                                 return;
 
-                            int totalRows = sheet.UsedRange.Rows.Count;
-                            UpdateProgBarChart(0, totalRows);
+                            //UpdateProgBarChart(0, totalRows);
                             ExcelChart xlChart;
                             try
                             {
                                 xlChart = new ExcelChart(sheet);
                                 xlChart.SetChartRange();
-                                ResetProgBarChart(totalRows);
+                                
                                 Thread.Sleep(1);
                             }
                             catch (Exception)
@@ -197,7 +199,8 @@ namespace DixelGraphics
                     sheetNumber++;
                     Thread.Sleep(1);
                 }
-                foreach(Thread t in chartThreads)
+                ResetProgBarChart(totalRows);
+                foreach (Thread t in chartThreads)
                 {
                     t.Start();
                     t.Join();
@@ -301,7 +304,7 @@ namespace DixelGraphics
         private void UpdateProgBarConvert()
         {
             MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
-            if (window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Value) != window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum))
+            if (window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Value) < window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum))
             {
                 decimal val = window.progBarConvert.Dispatcher.Invoke(() => (decimal)(++window.progBarConvert.Value));
                 window.progBarConvertText.Dispatcher.Invoke(() => window.progBarConvertText.Text = $"Проверка на датите: {(int)((val / (decimal)window.progBarConvert.Dispatcher.Invoke(() => window.progBarConvert.Maximum) * 100))}%");
@@ -381,6 +384,7 @@ namespace DixelGraphics
             }
         }//*/
 
+        /*
         private void CreateTemperatureGraphs(Worksheet sheet)
         {
             if (CancelRequest())
@@ -400,15 +404,15 @@ namespace DixelGraphics
             {
                 Dispose(sheet);
             }
-
-        }
+        }//*/
 
         private bool CancelRequest()
         {
             MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
             if (MainWindow.Cancel)
             {
-                window.labelNotification.Dispatcher.Invoke(() => window.labelNotification.Content = "Work canceled...!");
+                window.labelNotification.Dispatcher.Invoke(() => window.labelNotification.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFE41A1A"))); //
+                window.labelNotification.Dispatcher.Invoke(() => window.labelNotification.Content = "Принудително спиране...!");
                 return true;
             }
             return false;
@@ -419,13 +423,13 @@ namespace DixelGraphics
             try
             {
                 Sheets sheets = xlWBook.Sheets;
-                List<Thread> sheetToAlter = new List<Thread>();
+                List<Thread> sheetsToAlter = new List<Thread>();
                 foreach(Worksheet sheet in sheets)
                 {
                     Thread t = new Thread(() => ConvertValues(sheet));
-                    sheetToAlter.Add(t);
+                    sheetsToAlter.Add(t);
                 }
-                foreach(Thread t in sheetToAlter)
+                foreach(Thread t in sheetsToAlter)
                 {
                     t.Start();
                     t.Join();

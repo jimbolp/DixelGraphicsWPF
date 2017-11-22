@@ -14,6 +14,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.IO;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace DixelGraphics
 {
@@ -95,6 +96,7 @@ namespace DixelGraphics
         /// </summary>
         private void StartWorking()
         {
+            
             if (!ValidateCheckBoxes())
             {
                 return;
@@ -113,8 +115,7 @@ namespace DixelGraphics
                     }
                     if (graphicsCheckBox.Dispatcher.Invoke(() => graphicsCheckBox.IsChecked ?? false))
                     {
-                        excelFile.CreateGraphics(tempChckBox.Dispatcher.Invoke(() => tempChckBox.IsChecked ?? false),
-                            humidChckBox.Dispatcher.Invoke(() => humidChckBox.IsChecked ?? false));
+                        excelFile.CreateGraphics();
                     }
                     if(printChckBox.Dispatcher.Invoke(() => printChckBox.IsChecked ?? false))
                     {
@@ -123,6 +124,7 @@ namespace DixelGraphics
                     excelFile.SaveAs();
                     isRunning = false;
                     excelFile.Dispose();
+                    _cancel = false;
                 });
                 workThread.Start();
             }
@@ -130,7 +132,6 @@ namespace DixelGraphics
             {
                 if (excelFile != null)
                     excelFile.Dispose();
-                //TODO...
             }
         }
 
@@ -156,18 +157,28 @@ namespace DixelGraphics
 
         private void graphicsCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            tempChckBox.IsEnabled = true;
+            /*tempChckBox.IsEnabled = true;
             tempChckBox.IsChecked = true;
             humidChckBox.IsEnabled = true;
-            humidChckBox.IsChecked = true;
+            humidChckBox.IsChecked = true;//*/
         }
 
         private void graphicsCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            tempChckBox.IsChecked = false;
-            tempChckBox.IsEnabled = false;
-            humidChckBox.IsChecked = false;
-            humidChckBox.IsEnabled = false;
+            //tempChckBox.IsChecked = false;
+            //tempChckBox.IsEnabled = false;
+            //humidChckBox.IsChecked = false;
+            //humidChckBox.IsEnabled = false;
+        }
+
+        private void btnLoadFile_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Multiselect = false;
+            if (ofd.ShowDialog() ?? false)
+            {
+                filePathTextBox.Text = ofd.FileName;
+            }
         }
     }
 }

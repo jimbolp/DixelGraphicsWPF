@@ -6,10 +6,21 @@
         xmlns:local="clr-namespace:DixelGraphics"
         mc:Ignorable="d"
         Title="Създаване на графики" Height="325.942" Width="458.259">
+    <!--<Window.Resources>
+        <Style x:Key="wrapText" TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <TextBlock Text="{TemplateBinding Content}" TextWrapping="Wrap"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>-->
     <Grid>
 
         <TextBox x:Name="filePathTextBox" HorizontalAlignment="Left" Height="23" Margin="10,30,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="273" DragOver="filePathTextBox_DragOver" Drop="filePathTextBox_Drop" AllowDrop="True" PreviewDragOver="filePathTextBox_PreviewDragOver"/>
-        <Button x:Name="startButton" HorizontalAlignment="Left" Margin="328,30,0,0" VerticalAlignment="Top" Width="75" Height="72" Background="{x:Null}" Click="startButton_Click">
+        <Button x:Name="startButton" HorizontalAlignment="Left" Margin="328,30,0,0" VerticalAlignment="Top" Width="75" Height="72" Background="{x:Null}" Click="startButton_Click" IsDefault="True">
             <StackPanel>
                 <Image Source="Resources/005-line-chart.ico" Stretch="None" />
             </StackPanel>
@@ -28,8 +39,13 @@
             <ProgressBar x:Name="progBarConvert" x:FieldModifier="public" Panel.ZIndex="1" Grid.IsSharedSizeScope="True" VerticalContentAlignment="Center"/>
             <TextBlock x:Name="progBarConvertText" HorizontalAlignment="Center" x:FieldModifier="public" Background="Transparent" FontWeight="Bold" Panel.ZIndex="2" Foreground="#FF494949" VerticalAlignment="Center" Grid.IsSharedSizeScope="True"/>
         </Grid>
-        <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Left" Margin="328,120,0,0" VerticalAlignment="Top" Width="75" Click="btnCancel_Click" IsCancel="True"/>
-        <Label x:Name="labelNotification" x:FieldModifier="public" Content="" HorizontalAlignment="Left" Margin="10,0,0,58" Height="26" VerticalAlignment="Bottom" FontWeight="Bold" FontSize="10"/>
+        <Button x:Name="btnCancel" Content="Cancel" HorizontalAlignment="Left" Margin="328,164,0,0" VerticalAlignment="Top" Width="75" Click="btnCancel_Click" IsCancel="True" Background="{x:Null}"/>
+        <Label x:Name="labelNotification" x:FieldModifier="public" Content="" HorizontalAlignment="Left" Margin="10,0,0,58" Height="31" VerticalAlignment="Bottom" FontWeight="Bold"/>
+        <Button x:Name="btnLoadFile" HorizontalAlignment="Left" Margin="328,107,0,0" VerticalAlignment="Top" Width="75" Height="52" FontWeight="Bold" RenderTransformOrigin="0.5,0.5" Background="{x:Null}" Click="btnLoadFile_Click">
+            <StackPanel>
+                <TextBlock Text="Зареди файл" TextWrapping="Wrap" TextAlignment="Center" FontSize="14" FontWeight="Bold"/>
+            </StackPanel>
+        </Button>
 
     </Grid>
 </Window>
