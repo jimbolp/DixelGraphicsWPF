@@ -55,28 +55,62 @@ namespace DixelGraphics
             bottomValueCell = topValueCell = currentValueColumn.ToString() + row;
         }
 
-        public void SetChartRange()
+        public void SetChartRange(bool temperature, bool humidity)
         {
+            MainWindow window = System.Windows.Application.Current.Dispatcher.Invoke(() => System.Windows.Application.Current.MainWindow as MainWindow);
+            
             //tests...
             int valueColumnsCount = sheet.UsedRange.Columns.Count;
             char valueColumn = (char)64; //In order to index the columns with their real number I set the initial value to the symbol before 'A'.
                                          //This way when I loop through each column we add the column number to 64 and the characters are 64 + 1 = 'A', 64 + 2 = 'B'... etc.
-            
+            MessageBoxResult messageBoxButton = MessageBoxResult.None;
             for (int i = 2; i <= valueColumnsCount; ++i)
             {
                 //Char 'B' == 66 (ASCII Code Table)
                 currentValueColumn = (char)(valueColumn + i);
                 topValueCell = bottomValueCell = currentValueColumn.ToString() + 1;
                 //TODO...
-                if()
-                GraphFromChartRange(sheet.UsedRange.Columns[i]);
+                GraphType type;
+                if (!temperature && !humidity)
+                {
+                    type = CheckGraphType(sheet.UsedRange.Columns[i]);
+                    GraphFromChartRange(sheet.UsedRange.Columns[i], type);
+                }
+                if (temperature && i == 2)
+                {
+                    GraphFromChartRange(sheet.UsedRange.Columns[i], GraphType.Temperature);
+                }
+                if (humidity)
+                {
+                    if((valueColumnsCount == 2 && !temperature) || (valueColumnsCount != 2 && i != 2))
+                        GraphFromChartRange(sheet.UsedRange.Columns[i], GraphType.Humidity);
+                    else
+                    {
+                        if(!window.BothGraphics.HasValue && (messageBoxButton = MessageBox.Show("Избрали сте да се създадат графики за влажност и температура едновременно." + 
+                            Environment.NewLine +
+                            "Възможно е програмата да създаде две отделни графики с едни и същи стойности!" +
+                            Environment.NewLine +
+                            " Сигурни ли сте че искате да продължите?", "Внимание!", MessageBoxButton.YesNo)) == MessageBoxResult.Yes)
+                        {
+                            window.BothGraphics = true;
+                            GraphFromChartRange(sheet.UsedRange.Columns[i], GraphType.Humidity);                            
+                        }
+                        else if(messageBoxButton == MessageBoxResult.No)
+                        {
+                            window.BothGraphics = false;
+                        }
+                        else if(window.BothGraphics ?? false)
+                        {
+                            GraphFromChartRange(sheet.UsedRange.Columns[i], GraphType.Humidity);
+                        }
+                    }
+                }
             }
             //tests end
         }
 
-        private void GraphFromChartRange(Range column)
+        private void GraphFromChartRange(Range column, GraphType type)
         {
-            GraphType type = CheckGraphType(column);
             temperature = type == GraphType.Temperature ? true : false;
             double startPositionLeft = 100;
             double startPositionTop = 100;

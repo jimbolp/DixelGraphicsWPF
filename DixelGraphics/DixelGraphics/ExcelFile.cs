@@ -26,7 +26,7 @@ namespace DixelGraphics
         const double TEMP_MAX = 24.0;
         const double HUMID_MIN = 35.0;
         const double HUMID_MAX = 55.0;
-
+        
         private readonly String SaveDir = "";
         private readonly String SaveFileName = "";
         Application xlApp = new Application();
@@ -169,7 +169,7 @@ namespace DixelGraphics
                             try
                             {
                                 xlChart = new ExcelChart(sheet);
-                                xlChart.SetChartRange();
+                                xlChart.SetChartRange(temperature, humidity);
                                 
                                 Thread.Sleep(1);
                             }

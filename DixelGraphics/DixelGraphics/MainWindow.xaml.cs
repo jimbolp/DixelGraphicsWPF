@@ -27,6 +27,7 @@ namespace DixelGraphics
         public static bool Cancel { get { return _cancel; } }
         private string loadedFile = "";
         private bool isRunning = false;
+        public bool? BothGraphics { get; set; } = null;
         public MainWindow()
         {
             InitializeComponent();
@@ -96,7 +97,8 @@ namespace DixelGraphics
         /// </summary>
         private void StartWorking()
         {
-            
+            _cancel = false;
+            labelNotification.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF000000"));
             if (!ValidateCheckBoxes())
             {
                 return;
@@ -115,7 +117,8 @@ namespace DixelGraphics
                     }
                     if (graphicsCheckBox.Dispatcher.Invoke(() => graphicsCheckBox.IsChecked ?? false))
                     {
-                        excelFile.CreateGraphics();
+                        excelFile.CreateGraphics(tempChckBox.Dispatcher.Invoke(() => tempChckBox.IsChecked ?? false), 
+                            humidChckBox.Dispatcher.Invoke(() => humidChckBox.IsChecked ?? false));
                     }
                     if(printChckBox.Dispatcher.Invoke(() => printChckBox.IsChecked ?? false))
                     {
@@ -125,6 +128,7 @@ namespace DixelGraphics
                     isRunning = false;
                     excelFile.Dispose();
                     _cancel = false;
+                    BothGraphics = null;
                 });
                 workThread.Start();
             }
@@ -132,6 +136,7 @@ namespace DixelGraphics
             {
                 if (excelFile != null)
                     excelFile.Dispose();
+                BothGraphics = null;
             }
         }
 
@@ -157,18 +162,18 @@ namespace DixelGraphics
 
         private void graphicsCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            /*tempChckBox.IsEnabled = true;
-            tempChckBox.IsChecked = true;
+            tempChckBox.IsEnabled = true;
+            //tempChckBox.IsChecked = true;
             humidChckBox.IsEnabled = true;
-            humidChckBox.IsChecked = true;//*/
+            //humidChckBox.IsChecked = true;//*/
         }
 
         private void graphicsCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            //tempChckBox.IsChecked = false;
-            //tempChckBox.IsEnabled = false;
-            //humidChckBox.IsChecked = false;
-            //humidChckBox.IsEnabled = false;
+            tempChckBox.IsChecked = false;
+            tempChckBox.IsEnabled = false;
+            humidChckBox.IsChecked = false;
+            humidChckBox.IsEnabled = false;
         }
 
         private void btnLoadFile_Click(object sender, RoutedEventArgs e)
